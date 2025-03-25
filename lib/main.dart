@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shimmer/shimmer.dart';
 
 void main() {
   runApp(const MyApp());
@@ -98,7 +99,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
         title: const Text('Now Playing Movies'),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildLoadingShimmer()
           : _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
               : Column(
@@ -117,36 +118,58 @@ class _MovieListScreenState extends State<MovieListScreen> {
                         height: 150,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
-                          itemCount: _movies.length,
+                          itemCount: 10000,
                           itemBuilder: (context, index) {
-                            final movie = _movies[index];
+                            final movie = _movies[index % _movies.length];
                             return GestureDetector(
                               onTap: () => _selectMovie(movie),
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
-                                child: Container(
-                                  width: 92, // Width of the thumbnail (w92)
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.grey.withOpacity(0.5),
-                                        spreadRadius: 1,
-                                        blurRadius: 3,
-                                        offset: const Offset(0, 2),
+                                child: Hero(
+                                  tag: 'movie-${movie.id}',
+                                  child: AnimatedScale(
+                                    duration: const Duration(milliseconds: 300),
+                                    scale: _selectedMovie == movie ? 1.1 : 1.0,
+                                    child: Container(
+                                      width: 92, // Width of the thumbnail (w92)
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.grey.withOpacity(0.5),
+                                            spreadRadius: 1,
+                                            blurRadius: 3,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: movie.posterPath != null
-                                        ? Image.network(
-                                            'https://image.tmdb.org/t/p/w92${movie.posterPath}',
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) =>
-                                                const Center(child: Icon(Icons.error)),
-                                          )
-                                        : const Center(child: Icon(Icons.movie, size: 40)),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: AnimatedOpacity(
+                                          duration: const Duration(milliseconds: 500),
+                                          opacity: _isLoading ? 0.5 : 1.0,
+                                          child: movie.posterPath != null
+                                              ? Image.network(
+                                                  'https://image.tmdb.org/t/p/w92${movie.posterPath}',
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error, stackTrace) =>
+                                                      const Center(child: Icon(Icons.error)),
+                                                  loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+                                                    if (loadingProgress == null) return child;
+                                                    return Center(
+                                                      child: CircularProgressIndicator(
+                                                        value: loadingProgress.expectedTotalBytes != null
+                                                            ? loadingProgress.cumulativeBytesLoaded /
+                                                                loadingProgress.expectedTotalBytes!
+                                                            : null,
+                                                      ),
+                                                    );
+                                                  },
+                                                )
+                                              : const Center(child: Icon(Icons.movie, size: 40)),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -168,14 +191,32 @@ class _MovieListScreenState extends State<MovieListScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: movie.posterPath != null
-                  ? Image.network(
-                      'https://image.tmdb.org/t/p/w342${movie.posterPath}', // Larger image for big display
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.error),
-                    )
-                  : const Icon(Icons.movie, size: 100),
+              child: Hero(
+                tag: 'movie-${movie.id}',
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 500),
+                  opacity: _isLoading ? 0.5 : 1.0,
+                  child: movie.posterPath != null
+                      ? Image.network(
+                          'https://image.tmdb.org/t/p/w342${movie.posterPath}', // Larger image for big display
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.error),
+                          loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                        )
+                      : const Icon(Icons.movie, size: 100),
+                ),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -197,6 +238,41 @@ class _MovieListScreenState extends State<MovieListScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Column(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Container(
+              margin: const EdgeInsets.all(8.0),
+              color: Colors.grey,
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: 5,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    width: 92,
+                    height: 150,
+                    color: Colors.grey,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
