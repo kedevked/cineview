@@ -59,7 +59,8 @@ class _MovieListScreenState extends State<MovieListScreen> {
         if (data['results'] != null) {
           final List<dynamic> movieList = data['results'];
           setState(() {
-            _movies = movieList.map((movieJson) => Movie.fromJson(movieJson)).toList();
+            _movies =
+                movieList.map((movieJson) => Movie.fromJson(movieJson)).toList();
             _isLoading = false;
           });
         } else {
@@ -70,7 +71,8 @@ class _MovieListScreenState extends State<MovieListScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = 'Failed to load movies. Status code: ${response.statusCode}';
+          _errorMessage =
+              'Failed to load movies. Status code: ${response.statusCode}';
           _isLoading = false;
         });
       }
@@ -92,21 +94,59 @@ class _MovieListScreenState extends State<MovieListScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
-              : ListView.builder(
+              : GridView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, // Number of columns in the grid
+                    childAspectRatio: 0.7, // Adjust aspect ratio as needed
+                    crossAxisSpacing: 8.0,
+                    mainAxisSpacing: 8.0,
+                  ),
                   itemCount: _movies.length,
                   itemBuilder: (context, index) {
                     final movie = _movies[index];
-                    return ListTile(
-                      leading: movie.posterPath != null
-                          ? Image.network(
-                              'https://image.tmdb.org/t/p/w92${movie.posterPath}',
-                              width: 50,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
-                            )
-                          : const Icon(Icons.movie),
-                      title: Text(movie.title ?? 'No Title'),
-                      subtitle: Text('Release Date: ${movie.releaseDate ?? 'N/A'}'),
+                    return Card(
+                      child: InkWell(
+                        onTap: () {
+                          // Handle movie tap (e.g., navigate to details)
+                          print('Tapped on ${movie.title}');
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: movie.posterPath != null
+                                  ? Image.network(
+                                      'https://image.tmdb.org/t/p/w185${movie.posterPath}', // Use a larger image size
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) =>
+                                          const Icon(Icons.error),
+                                    )
+                                  : const Icon(Icons.movie, size: 60),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    movie.title ?? 'No Title',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Release: ${movie.releaseDate ?? 'N/A'}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   },
                 ),
