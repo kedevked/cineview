@@ -33,6 +33,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
   List<Movie> _movies = [];
   bool _isLoading = true;
   String _errorMessage = '';
+  Movie? _selectedMovie;
 
   @override
   void initState() {
@@ -47,7 +48,6 @@ class _MovieListScreenState extends State<MovieListScreen> {
     });
 
     try {
-      // Replace with your actual API key.
       const apiKey = 'a61feb04a7d5a6ac523affbfa94bd6b4'; // Replace with your API key
       final response = await http.get(
         Uri.parse(
@@ -61,6 +61,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
           setState(() {
             _movies =
                 movieList.map((movieJson) => Movie.fromJson(movieJson)).toList();
+            _selectedMovie = _movies.isNotEmpty ? _movies[0] : null; // Select the first movie initially
             _isLoading = false;
           });
         } else {
@@ -84,6 +85,12 @@ class _MovieListScreenState extends State<MovieListScreen> {
     }
   }
 
+  void _selectMovie(Movie movie) {
+    setState(() {
+      _selectedMovie = movie;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,62 +101,103 @@ class _MovieListScreenState extends State<MovieListScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
-              : GridView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, // Number of columns in the grid
-                    childAspectRatio: 0.7, // Adjust aspect ratio as needed
-                    crossAxisSpacing: 8.0,
-                    mainAxisSpacing: 8.0,
-                  ),
-                  itemCount: _movies.length,
-                  itemBuilder: (context, index) {
-                    final movie = _movies[index];
-                    return Card(
-                      child: InkWell(
-                        onTap: () {
-                          // Handle movie tap (e.g., navigate to details)
-                          print('Tapped on ${movie.title}');
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: movie.posterPath != null
-                                  ? Image.network(
-                                      'https://image.tmdb.org/t/p/w185${movie.posterPath}', // Use a larger image size
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          const Icon(Icons.error),
-                                    )
-                                  : const Icon(Icons.movie, size: 60),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    movie.title ?? 'No Title',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
+              : Column(
+                  children: [
+                    // Big Movie Display
+                    Expanded(
+                      flex: 3,
+                      child: _selectedMovie != null
+                          ? _buildBigMovieCard(_selectedMovie!)
+                          : const Center(child: Text('No movie selected')),
+                    ),
+                    // Miniature Movie List
+                    Expanded(
+                      flex: 1,
+                      child: SizedBox(
+                        height: 150,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _movies.length,
+                          itemBuilder: (context, index) {
+                            final movie = _movies[index];
+                            return GestureDetector(
+                              onTap: () => _selectMovie(movie),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Container(
+                                  width: 92, // Width of the thumbnail (w92)
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.grey.withOpacity(0.5),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Release: ${movie.releaseDate ?? 'N/A'}',
-                                    style: const TextStyle(fontSize: 12),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: movie.posterPath != null
+                                        ? Image.network(
+                                            'https://image.tmdb.org/t/p/w92${movie.posterPath}',
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) =>
+                                                const Center(child: Icon(Icons.error)),
+                                          )
+                                        : const Center(child: Icon(Icons.movie, size: 40)),
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
+    );
+  }
+
+  Widget _buildBigMovieCard(Movie movie) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: movie.posterPath != null
+                  ? Image.network(
+                      'https://image.tmdb.org/t/p/w342${movie.posterPath}', // Larger image for big display
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.error),
+                    )
+                  : const Icon(Icons.movie, size: 100),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    movie.title ?? 'No Title',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Release: ${movie.releaseDate ?? 'N/A'}',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
