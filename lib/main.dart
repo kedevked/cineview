@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:myapp/api_key.dart';
 import 'dart:convert';
 import 'package:shimmer/shimmer.dart';
 
@@ -49,7 +50,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
     });
 
     try {
-      const apiKey = 'a61feb04a7d5a6ac523affbfa94bd6b4'; // Replace with your API key
+      const apiKey = ApiKey.theMovieDb; // Replace with your API key
       final response = await http.get(
         Uri.parse(
             'https://api.themoviedb.org/3/movie/now_playing?api_key=$apiKey'),
